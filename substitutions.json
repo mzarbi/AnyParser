@@ -1,0 +1,10 @@
+[
+    {
+        "original": "ACCOUNT NUMBER",
+        "substitute": "NUMBER"
+    },
+    {
+        "original": "ACCOUNT TYPE",
+        "substitute": "TYPE"
+    }
+]
