@@ -13,11 +13,11 @@ from PyQt5.QtWidgets import QFileDialog, QLabel, QVBoxLayout, QWidget, QLineEdit
     QDialogButtonBox, QFormLayout, QTableWidgetItem, QProgressBar, QTreeWidget, QTreeWidgetItem
 from scipy.sparse import lil_matrix
 
-from gui import Ui_MainWindow
+from gui2 import Ui_MainWindow
 
 
 def zied_similarity(s1, s2):
-    delimiters = "/|:"
+    delimiters = "|:"
     dc = {}
     z = 0
     for delimiter in delimiters:
@@ -212,13 +212,15 @@ class ParserWindow(Ui_MainWindow):
         self.saveSubstitutionsButton.clicked.connect(self.saveSubstitutions)
         self.loadSubstitutionsButton.clicked.connect(self.loadSubstitutions)
         self.applySubstitutionsButton.clicked.connect(self.applySubstitutions)
-        self.computeClustersButton.clicked.connect(self.computeClusters)
 
+
+        self.computeClustersButton.clicked.connect(self.computeClusters)
         self.clustersTableWidget.cellClicked.connect(self.onClusterClick)
         self.deleteClustersButton.clicked.connect(self.onDeleteClusterClick)
         self.freezeButton.clicked.connect(self.onFreezeClick)
         self.loadClustersButton.clicked.connect(self.onLoadClustersClick)
         self.ClustersTreeWidget.itemClicked.connect(self.on_tree_item_clicked)
+        self.testFunctionButton.clicked.connect(self.testFunctionClick)
 
     def open_file_browser(self):
         file_path, _ = QFileDialog.getOpenFileName(None, "Open File", "", "All Files (*)")
@@ -381,8 +383,12 @@ class ParserWindow(Ui_MainWindow):
             lines = self.parser.current_text.split("\n")
             for prime in dc:
                 indices = dc[prime]
+                ss = str(prime) + "_" + str(randint(0, 100))
                 self.parser.frozen.update({
-                    str(prime) + "_" + str(randint(0, 100)): [lines[i] for i in range(len(lines)) if i in indices]
+                    ss: [lines[i] for i in range(len(lines)) if i in indices]
+                })
+                self.parser.converters.update({
+                    ss: ""
                 })
 
             lines = [lines[i] if i not in lines_to_remove else "" for i in range(len(lines))]
@@ -398,8 +404,12 @@ class ParserWindow(Ui_MainWindow):
     def onDeleteClusterClick(self):
         try:
             selected_rows = self.clustersTableWidget.selectionModel().selectedRows()
+            for i in selected_rows:
+                print(i.__dict__)
             self.clustersTableWidget.selectionModel().reset()
             lines_to_remove = []
+
+
             for row in reversed(selected_rows):
                 lines_to_remove += json.loads(self.clustersTableWidget.item(row.row(), 3).text())
             for row in reversed(selected_rows):
@@ -428,7 +438,18 @@ class ParserWindow(Ui_MainWindow):
 
     def on_tree_item_clicked(self, item):
         if item.parent() is not None:
-            print("Clicked item: {}".format(item.text(0)))
+            try:
+                id_ = item.text(0)
+                # update the QListView with the data
+                model = QtGui.QStandardItemModel()
+                for i in self.parser.frozen[id_]:
+                    model.appendRow(QtGui.QStandardItem(i))
+                self.examplesListWidget_2.setModel(model)
+            except:traceback.print_exc()
+
+    def testFunctionClick(self):
+        function = self.functionTextEdit.toPlainText()
+
 
 
 class Parser(QThread):
@@ -453,6 +474,7 @@ class Parser(QThread):
         self.similarity_matrix = None
         self.clustered_dict = {}
         self.frozen = {}
+        self.converters = {}
 
     def read_report(self):
         # Open the file in binary mode and read the first few bytes
